@@ -255,8 +255,20 @@ void NoiseLabAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     // Generate noise
     noiseGenerator.processBlock(buffer, buffer.getNumSamples());
     
-    // Apply envelope (always process, but behavior depends on trigger mode)
-    envelopeGenerator.processBlock(buffer, buffer.getNumSamples());
+    // Apply envelope - in MIDI_TRIGGER mode, only process if envelope is active
+    if (currentTriggerMode == FREE_RUN || currentTriggerMode == HOST_SYNC || envelopeGenerator.isActive())
+    {
+        envelopeGenerator.processBlock(buffer, buffer.getNumSamples());
+    }
+    else if (currentTriggerMode == MIDI_TRIGGER)
+    {
+        // In MIDI trigger mode, if envelope is not active, clear the buffer
+        buffer.clear();
+        static int clearCount = 0;
+        if (++clearCount % 48000 == 0) {  // Log every ~1 second at 48kHz
+            DBG("MIDI_TRIGGER mode: Buffer cleared - envelope not active");
+        }
+    }
     
     // Process LFO and apply modulation
     for (int i = 0; i < buffer.getNumSamples(); ++i)
@@ -447,6 +459,8 @@ void NoiseLabAudioProcessor::parameterChanged(const juce::String& parameterID, f
             DBG("Setting MIDI_TRIGGER mode - resetting envelope to Idle");
             // Reset envelope for MIDI mode - it will only trigger on MIDI notes
             envelopeGenerator.reset();
+            // Clear any active notes when switching to MIDI trigger mode
+            activeNotes.clear();
         }
     }
     else if (parameterID == "attack")
