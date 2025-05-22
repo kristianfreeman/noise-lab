@@ -37,6 +37,11 @@ void EnvelopeGenerator::processBlock(juce::AudioBuffer<float>& buffer, int numSa
     if (currentStage == Idle && !noteIsOn)
     {
         buffer.clear();
+        // Debug: Log when buffer is cleared
+        static int clearCount = 0;
+        if (++clearCount % 48000 == 0) { // Log every ~1 second at 48kHz
+            DBG("Envelope: Buffer cleared - Idle state, no note on");
+        }
         return;
     }
     
@@ -82,6 +87,7 @@ void EnvelopeGenerator::processBlock(juce::AudioBuffer<float>& buffer, int numSa
                     currentLevel = 0.0f;
                     currentStage = Idle;
                     noteIsOn = false;  // Ensure note is marked as off when envelope completes
+                    DBG("Envelope: Completed cycle, now in Idle state");
                 }
                 break;
                 
@@ -109,6 +115,7 @@ void EnvelopeGenerator::reset()
 //==============================================================================
 void EnvelopeGenerator::noteOn(int /*midiNoteNumber*/, float velocity)
 {
+    DBG("Envelope: noteOn triggered, velocity=" << velocity);
     currentVelocity = velocity;
     noteIsOn = true;
     
@@ -174,6 +181,11 @@ bool EnvelopeGenerator::isOneShot() const
 bool EnvelopeGenerator::isActive() const
 {
     return currentStage != Idle;
+}
+
+bool EnvelopeGenerator::isIdle() const
+{
+    return currentStage == Idle;
 }
 
 //==============================================================================

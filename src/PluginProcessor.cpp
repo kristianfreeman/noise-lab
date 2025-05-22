@@ -125,6 +125,13 @@ void NoiseLabAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 {
     juce::ScopedNoDenormals noDenormals;
     
+    // Debug: Log trigger mode at start of each block (throttled)
+    static int debugBlockCount = 0;
+    if (++debugBlockCount % 48000 == 0) {  // Log every ~1 second at 48kHz
+        DBG("ProcessBlock: Current trigger mode = " << static_cast<int>(currentTriggerMode) 
+            << " (0=FREE_RUN, 1=MIDI_TRIGGER, 2=HOST_SYNC, 3=ONE_SHOT)");
+    }
+    
     // Update playback position from host
     auto playHead = getPlayHead();
     if (playHead != nullptr)
@@ -150,6 +157,10 @@ void NoiseLabAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         
         if (message.isNoteOn())
         {
+            DBG("MIDI Note On received: note=" << message.getNoteNumber() 
+                << ", velocity=" << message.getVelocity() 
+                << ", trigger_mode=" << static_cast<int>(currentTriggerMode));
+                
             // Add to active notes
             MidiNote note;
             note.noteNumber = message.getNoteNumber();
@@ -158,12 +169,23 @@ void NoiseLabAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             
             activeNotes.push_back(note);
             
-            // Trigger envelope
-            float velocityAsFloat = static_cast<float>(note.velocity) / 127.0f;
-            envelopeGenerator.noteOn(note.noteNumber, velocityAsFloat);
+            // Trigger envelope only in MIDI trigger mode
+            if (currentTriggerMode == MIDI_TRIGGER || currentTriggerMode == ONE_SHOT)
+            {
+                float velocityAsFloat = static_cast<float>(note.velocity) / 127.0f;
+                envelopeGenerator.noteOn(note.noteNumber, velocityAsFloat);
+                DBG("Triggered envelope: note=" << note.noteNumber << ", velocity=" << velocityAsFloat);
+            }
+            else
+            {
+                DBG("MIDI note received but trigger mode is " << static_cast<int>(currentTriggerMode) << " - not triggering envelope");
+            }
         }
         else if (message.isNoteOff())
         {
+            DBG("MIDI Note Off received: note=" << message.getNoteNumber() 
+                << ", trigger_mode=" << static_cast<int>(currentTriggerMode));
+                
             // Remove from active notes
             for (auto& note : activeNotes)
             {
@@ -186,7 +208,15 @@ void NoiseLabAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             
             if (!anyActive)
             {
-                envelopeGenerator.noteOff(message.getNoteNumber());
+                if (currentTriggerMode == MIDI_TRIGGER || currentTriggerMode == ONE_SHOT)
+                {
+                    envelopeGenerator.noteOff(message.getNoteNumber());
+                    DBG("Triggered envelope release: note=" << message.getNoteNumber());
+                }
+                else
+                {
+                    DBG("Note off received but trigger mode is " << static_cast<int>(currentTriggerMode) << " - not releasing envelope");
+                }
             }
         }
         else if (message.isAllNotesOff())
@@ -194,6 +224,20 @@ void NoiseLabAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             // Clear all notes
             activeNotes.clear();
             envelopeGenerator.reset();
+        }
+    }
+    
+    // Handle FREE_RUN mode - continuously trigger envelope if needed
+    if (currentTriggerMode == FREE_RUN)
+    {
+        // Check if envelope is idle and needs retriggering
+        if (envelopeGenerator.isIdle())
+        {
+            envelopeGenerator.noteOn(60, 1.0f);  // Trigger with middle C, full velocity
+            static int triggerCount = 0;
+            if (++triggerCount % 100 == 0) {  // Throttle debug output
+                DBG("FREE_RUN: Auto-retriggered envelope (count: " << triggerCount << ")");
+            }
         }
     }
     
@@ -386,6 +430,8 @@ void NoiseLabAudioProcessor::parameterChanged(const juce::String& parameterID, f
     else if (parameterID == "triggerMode")
     {
         currentTriggerMode = static_cast<TriggerMode>(static_cast<int>(newValue));
+        DBG("Trigger mode changed to: " << static_cast<int>(currentTriggerMode) << 
+            " (0=FREE_RUN, 1=MIDI_TRIGGER, 2=HOST_SYNC, 3=ONE_SHOT)");
         
         // Configure envelope based on trigger mode
         envelopeGenerator.setOneShot(currentTriggerMode == ONE_SHOT);
@@ -393,10 +439,12 @@ void NoiseLabAudioProcessor::parameterChanged(const juce::String& parameterID, f
         // For free-run mode, trigger envelope immediately
         if (currentTriggerMode == FREE_RUN)
         {
+            DBG("Setting FREE_RUN mode - triggering envelope");
             envelopeGenerator.noteOn(60, 1.0f); // Trigger with full velocity
         }
         else if (currentTriggerMode == MIDI_TRIGGER)
         {
+            DBG("Setting MIDI_TRIGGER mode - resetting envelope to Idle");
             // Reset envelope for MIDI mode - it will only trigger on MIDI notes
             envelopeGenerator.reset();
         }
