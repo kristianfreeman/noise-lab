@@ -65,12 +65,21 @@ namespace UIUtils
     {
         auto knob = std::make_unique<juce::Slider>(juce::Slider::RotaryVerticalDrag, 
                                                 juce::Slider::TextBoxBelow);
-        knob->setColour(juce::Slider::rotarySliderFillColourId, highlight);
-        knob->setColour(juce::Slider::rotarySliderOutlineColourId, knobBg);
+        
+        // Improved knob aesthetics
+        knob->setColour(juce::Slider::rotarySliderFillColourId, highlight.brighter(0.3f));
+        knob->setColour(juce::Slider::rotarySliderOutlineColourId, knobBg.brighter(0.4f));
+        knob->setColour(juce::Slider::thumbColourId, highlight);
         knob->setColour(juce::Slider::textBoxTextColourId, text);
         knob->setColour(juce::Slider::textBoxBackgroundColourId, background);
         knob->setColour(juce::Slider::textBoxOutlineColourId, background);
-        knob->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 15);
+        knob->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 65, 16);
+        
+        // Better rotation range and sensitivity
+        knob->setRotaryParameters(juce::MathConstants<float>::pi * 1.25f, 
+                                 juce::MathConstants<float>::pi * 2.75f, true);
+        knob->setMouseDragSensitivity(150);
+        
         return knob;
     }
     
@@ -653,8 +662,8 @@ NoiseLabAudioProcessorEditor::NoiseLabAudioProcessorEditor(NoiseLabAudioProcesso
     addAndMakeVisible(effectsControls);
     addAndMakeVisible(globalControls);
     
-    // Set window size
-    setSize(800, 600);
+    // Set window size - increased width for better layout
+    setSize(900, 600);
 }
 
 NoiseLabAudioProcessorEditor::~NoiseLabAudioProcessorEditor()
@@ -692,12 +701,16 @@ void NoiseLabAudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
     bounds.removeFromTop(40); // Header space
     
-    // Layout calculations
-    const int columnWidth = bounds.getWidth() / 3;
+    // Layout calculations - improved spacing for wider window
+    const int margin = 10;
+    bounds.reduce(margin, margin);
+    
+    const int columnWidth = (bounds.getWidth() - 2 * margin) / 3;
     const int rowHeight = bounds.getHeight() / 3;
     
     // Left column
     auto leftColumn = bounds.removeFromLeft(columnWidth);
+    leftColumn.removeFromRight(margin / 2); // Add spacing between columns
     
     // Noise Type selector (top left)
     noiseTypeSelector.setBounds(leftColumn.removeFromTop(rowHeight));
@@ -710,6 +723,8 @@ void NoiseLabAudioProcessorEditor::resized()
     
     // Middle column
     auto middleColumn = bounds.removeFromLeft(columnWidth);
+    middleColumn.removeFromLeft(margin / 2);
+    middleColumn.removeFromRight(margin / 2);
     
     // Envelope controls (top and middle)
     envelopeControls.setBounds(middleColumn.removeFromTop(rowHeight * 2));
@@ -719,6 +734,7 @@ void NoiseLabAudioProcessorEditor::resized()
     
     // Right column
     auto rightColumn = bounds;
+    rightColumn.removeFromLeft(margin / 2);
     
     // Modulation controls (top right)
     modulationControls.setBounds(rightColumn.removeFromTop(rowHeight * 1.5));

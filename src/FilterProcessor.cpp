@@ -149,7 +149,7 @@ void FilterProcessor::processSample(float& sample, int channel)
     float a1 = 2.0f * a0;
     float a2 = a0;
     float b1 = 2.0f * (k * k - 1.0f) * norm;
-    float b2 = (1.0f - k / resonance + k * k) * norm;
+    float b2 = (1.0f - k / safeResonance + k * k) * norm;
     
     // Apply the filter (direct form II transposed)
     float input = sample;

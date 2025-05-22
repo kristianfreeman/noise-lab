@@ -36,38 +36,44 @@ void NoiseGenerator::prepareToPlay(double newSampleRate, int /*samplesPerBlock*/
 
 void NoiseGenerator::processBlock(juce::AudioBuffer<float>& buffer, int numSamples)
 {
-    for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+    const bool isStereo = buffer.getNumChannels() >= 2;
+    
+    for (int sample = 0; sample < numSamples; ++sample)
     {
-        float* channelData = buffer.getWritePointer(channel);
+        float leftNoise = 0.0f;
+        float rightNoise = 0.0f;
 
-        for (int sample = 0; sample < numSamples; ++sample)
+        switch (currentNoiseType)
         {
-            float noise = 0.0f;
-
-            switch (currentNoiseType)
-            {
-                case WhiteNoise:
-                    noise = generateWhiteNoise();
-                    break;
-                case PinkNoise:
-                    noise = generatePinkNoise();
-                    break;
-                case BrownNoise:
-                    noise = generateBrownNoise();
-                    break;
-                case DigitalCrunch:
-                    noise = generateDigitalCrunch();
-                    break;
-                case AnalogSimulation:
-                    noise = generateAnalogNoise();
-                    break;
-                default:
-                    noise = 0.0f;
-                    break;
-            }
-
-            channelData[sample] = noise;
+            case WhiteNoise:
+                leftNoise = generateWhiteNoise();
+                rightNoise = isStereo ? generateWhiteNoise() : leftNoise;
+                break;
+            case PinkNoise:
+                leftNoise = generatePinkNoise();
+                rightNoise = isStereo ? generatePinkNoise() : leftNoise;
+                break;
+            case BrownNoise:
+                leftNoise = generateBrownNoise();
+                rightNoise = isStereo ? generateBrownNoise() : leftNoise;
+                break;
+            case DigitalCrunch:
+                leftNoise = generateDigitalCrunch();
+                rightNoise = isStereo ? generateDigitalCrunch() : leftNoise;
+                break;
+            case AnalogSimulation:
+                leftNoise = generateAnalogNoise();
+                rightNoise = isStereo ? generateAnalogNoise() : leftNoise;
+                break;
+            default:
+                leftNoise = rightNoise = 0.0f;
+                break;
         }
+
+        // Write to channels
+        buffer.setSample(0, sample, leftNoise);
+        if (isStereo)
+            buffer.setSample(1, sample, rightNoise);
     }
 }
 
