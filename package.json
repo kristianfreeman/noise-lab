@@ -1,0 +1,16 @@
+{
+  "name": "noise-lab",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "claude": "npx claude",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@anthropic-ai/claude-code": "^0.2.126"
+  }
+}
