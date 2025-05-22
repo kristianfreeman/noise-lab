@@ -17,7 +17,10 @@ cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-Makefile
+# Note: Don't ignore project Makefile, only generated ones
+build/Makefile
+*/CMakeFiles/
+*/cmake_install.cmake
 *.vcxproj*
 *.sln
 *.user
