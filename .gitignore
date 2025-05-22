@@ -65,6 +65,9 @@ package-lock.json
 .env
 .env.local
 
+# Claude Code settings (user-specific)
+.claude/
+
 # Platform specific
 Thumbs.db
 ehthumbs.db
