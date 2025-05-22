@@ -81,6 +81,7 @@ void EnvelopeGenerator::processBlock(juce::AudioBuffer<float>& buffer, int numSa
                 {
                     currentLevel = 0.0f;
                     currentStage = Idle;
+                    noteIsOn = false;  // Ensure note is marked as off when envelope completes
                 }
                 break;
                 
