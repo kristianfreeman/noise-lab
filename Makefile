@@ -30,7 +30,7 @@ else
 	INSTALL_VST3_DIR = "$(HOMEDRIVE)$(HOMEPATH)/Common Files/VST3"
 endif
 
-.PHONY: all configure build clean install help run vst3 au standalone
+.PHONY: all configure build clean install install-system help run vst3 au standalone
 
 # Default target
 all: configure build
@@ -87,6 +87,48 @@ else
 	@echo "Installing on Windows - please copy manually from $(PLUGIN_DIR)"
 endif
 
+# Install the plugin to system-wide directories (requires sudo on macOS/Linux)
+install-system:
+	@echo "Installing Noise Lab plugin system-wide..."
+ifeq ($(UNAME_S),Darwin)
+	@echo "Checking if plugins exist before system install..."
+	@if [ ! -d "$(BUILD_DIR)/NoiseLab_artefacts/VST3/Noise Lab.vst3" ]; then \
+		echo "VST3 plugin not found. Run 'make vst3' first."; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(BUILD_DIR)/NoiseLab_artefacts/AU/Noise Lab.component" ]; then \
+		echo "AU plugin not found. Run 'make au' first."; \
+		exit 1; \
+	fi
+	@echo "Installing VST3 to /Library/Audio/Plug-Ins/VST3/..."
+	@sudo cp -r "$(BUILD_DIR)/NoiseLab_artefacts/VST3/Noise Lab.vst3" "/Library/Audio/Plug-Ins/VST3/"
+	@echo "Installing AU to /Library/Audio/Plug-Ins/Components/..."
+	@sudo cp -r "$(BUILD_DIR)/NoiseLab_artefacts/AU/Noise Lab.component" "/Library/Audio/Plug-Ins/Components/"
+	@echo "Setting correct permissions..."
+	@sudo chown -R root:admin "/Library/Audio/Plug-Ins/VST3/Noise Lab.vst3"
+	@sudo chown -R root:admin "/Library/Audio/Plug-Ins/Components/Noise Lab.component"
+	@sudo chmod -R 755 "/Library/Audio/Plug-Ins/VST3/Noise Lab.vst3"
+	@sudo chmod -R 755 "/Library/Audio/Plug-Ins/Components/Noise Lab.component"
+	@echo "System-wide installation completed:"
+	@echo "  VST3: /Library/Audio/Plug-Ins/VST3/Noise Lab.vst3"
+	@echo "  AU: /Library/Audio/Plug-Ins/Components/Noise Lab.component"
+else ifeq ($(UNAME_S),Linux)
+	@echo "Installing VST3 to /usr/lib/vst3/..."
+	@if [ ! -d "$(BUILD_DIR)/NoiseLab_artefacts/VST3/Noise Lab.vst3" ]; then \
+		echo "VST3 plugin not found. Run 'make vst3' first."; \
+		exit 1; \
+	fi
+	@sudo mkdir -p /usr/lib/vst3
+	@sudo cp -r "$(BUILD_DIR)/NoiseLab_artefacts/VST3/Noise Lab.vst3" "/usr/lib/vst3/"
+	@sudo chown -R root:root "/usr/lib/vst3/Noise Lab.vst3"
+	@sudo chmod -R 755 "/usr/lib/vst3/Noise Lab.vst3"
+	@echo "System-wide installation completed:"
+	@echo "  VST3: /usr/lib/vst3/Noise Lab.vst3"
+else
+	@echo "System-wide installation not supported on Windows via Makefile"
+	@echo "Please manually copy plugins to system directories"
+endif
+
 # Run the standalone version of the plugin
 run:
 	@echo "Running Noise Lab standalone version..."
@@ -112,7 +154,8 @@ help:
 	@echo "  au        - Build only AU plugin"
 	@echo "  standalone- Build only standalone application"
 	@echo "  clean     - Clean the build directory"
-	@echo "  install   - Install the plugin to the standard location"
+	@echo "  install   - Install the plugin to the user location"
+	@echo "  install-system - Install the plugin system-wide (requires sudo)"
 	@echo "  run       - Run the standalone version of the plugin"
 	@echo "  help      - Show this help message"
 	@echo ""
